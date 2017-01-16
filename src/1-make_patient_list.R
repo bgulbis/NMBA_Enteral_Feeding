@@ -25,6 +25,23 @@ meds_sched <- read_data("data/raw", "meds_sched") %>%
 
 meds_cont <- read_data("data/raw", "meds_cont") %>%
     as.meds_cont() %>%
-    tidy_data(nmba, meds_sched)
+    tidy_data(nmba, meds_sched) %>%
+    calc_runtime() %>%
+    summarize_data()
 
-edw_nmba_pie <- concat_encounters(meds_cont$pie.id)
+edw_nmba_pie <- concat_encounters(unique(meds_cont$pie.id))
+
+# run EDW query: Enteral Feeding
+
+feed <- read_data("data/raw", "feed") %>%
+    as.events() %>%
+    dmap_at("event.result", as.numeric)
+
+overlap_feeds <- feed %>%
+    inner_join(meds_cont, by = "pie.id") %>%
+    filter(event.datetime >= start.datetime,
+           event.datetime <= stop.datetime) %>%
+    distinct(pie.id)
+
+edw_include_pie <- concat_encounters(overlap_feeds$pie.id)
+
