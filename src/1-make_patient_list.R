@@ -3,7 +3,9 @@
 library(tidyverse)
 library(edwr)
 
-# run EDW query: Patients - by Medication
+# run EDW query:
+#   * Patients - by Medication
+#       - atracurium, cisatracurium, pancruonium, rocuronium, vecuronium, vecuronium INJ
 
 patients <- read_data("data/raw", "patients") %>%
     as.patients()
@@ -12,11 +14,11 @@ edw_pie <- concat_encounters(patients$pie.id)
 
 # run EDW queries:
 #   * Medications - Inpatient Continuous - Prompt
-#       - cisatracurium, rocuronium, vecuronium, vecuronium INJ
+#       - atracurium, cisatracurium, pancruonium, rocuronium, vecuronium, vecuronium INJ
 #   * Medications - Inpatient Intermittent - Prompt
-#       - cisatracurium, rocuronium, vecuronium, vecuronium INJ
+#       - atracurium, cisatracurium, pancruonium, rocuronium, vecuronium, vecuronium INJ
 
-nmba <- tibble(name = c("cisatracurium", "rocuronium", "vecuronium", "vecuronium INJ"),
+nmba <- tibble(name = c("atracurium", "cisatracurium", "pancruonium", "rocuronium", "vecuronium", "vecuronium INJ"),
                type = "med",
                group = "cont")
 
@@ -29,7 +31,13 @@ meds_cont <- read_data("data/raw", "meds_cont") %>%
     calc_runtime() %>%
     summarize_data()
 
-edw_nmba_pie <- concat_encounters(unique(meds_cont$pie.id))
+nmba_24h <- filter(meds_cont, duration >= 24)
+# nmba_sum <- meds_cont %>%
+#     group_by(pie.id) %>%
+#     summarize(duration = sum(duration, na.rm = TRUE)) %>%
+#     filter(duration >= 24)
+
+edw_nmba_pie <- concat_encounters(unique(nmba_24h$pie.id))
 
 # run EDW query: Enteral Feeding
 
