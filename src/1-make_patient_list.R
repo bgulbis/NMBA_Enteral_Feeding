@@ -1,6 +1,7 @@
 # get patients
 
 library(tidyverse)
+library(lubridate)
 library(edwr)
 
 # run EDW query:
@@ -9,6 +10,8 @@ library(edwr)
 
 patients <- read_data("data/raw", "patients") %>%
     as.patients()
+
+excl_patients <- filter(patients, age < 18, discharge.datetime < ymd("2016-09-01"))
 
 edw_pie <- concat_encounters(patients$pie.id)
 
@@ -29,7 +32,21 @@ meds_cont <- read_data("data/raw", "meds_cont") %>%
     calc_runtime() %>%
     summarize_data()
 
-nmba_24h <- filter(meds_cont, duration >= 24)
+tpn <- tibble(name = c("parenteral nutrition solution", "parenteral nutrition solution w/ lytes"),
+              type = "med",
+              group = "cont")
+
+tpn_cont <- read_data("data/raw", "meds_cont") %>%
+    as.meds_cont() %>%
+    tidy_data(tpn, meds_sched) %>%
+    calc_runtime() %>%
+    summarize_data()
+
+nmba_24h <- meds_cont %>%
+    filter(duration >= 24) %>%
+    anti_join(excl_patients, by = "pie.id")
+# join with tpn data and exclude overlap
+
 # nmba_sum <- meds_cont %>%
 #     group_by(pie.id) %>%
 #     summarize(duration = sum(duration, na.rm = TRUE)) %>%
