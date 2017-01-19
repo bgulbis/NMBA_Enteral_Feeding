@@ -1,6 +1,7 @@
 # get patients
 
 library(tidyverse)
+library(readxl)
 library(lubridate)
 library(edwr)
 
@@ -9,15 +10,17 @@ library(edwr)
 #       - cisatracurium, rocuronium, vecuronium, vecuronium INJ
 
 patients <- read_data("data/raw", "patients") %>%
-    as.patients()
-
-excl_patients <- filter(patients, age < 18, discharge.datetime < ymd("2016-09-01"))
+    as.patients() %>%
+    filter(age >= 18,
+           discharge.datetime < ymd("2016-09-01"))
 
 edw_pie <- concat_encounters(patients$pie.id)
 
 # run EDW queries:
-#   * Medications - Inpatient Continuous - All
-#   * Medications - Inpatient Intermittent - All
+#   * Medications - Inpatient Continuous - Prompt
+#       - cisatracurium, rocuronium, vecuronium, vecuronium INJ
+#   * Medications - Inpatient Intermittent - Prompt
+#       - cisatracurium, rocuronium, vecuronium, vecuronium INJ
 
 nmba <- tibble(name = c("cisatracurium", "rocuronium", "vecuronium", "vecuronium INJ"),
                type = "med",
@@ -32,27 +35,11 @@ meds_cont <- read_data("data/raw", "meds_cont") %>%
     calc_runtime() %>%
     summarize_data()
 
-tpn <- tibble(name = c("parenteral nutrition solution", "parenteral nutrition solution w/ lytes"),
-              type = "med",
-              group = "cont")
-
-tpn_cont <- read_data("data/raw", "meds_cont") %>%
-    as.meds_cont() %>%
-    tidy_data(tpn, meds_sched) %>%
-    calc_runtime() %>%
-    summarize_data()
-
 nmba_24h <- meds_cont %>%
     filter(duration >= 24) %>%
-    anti_join(excl_patients, by = "pie.id")
-# join with tpn data and exclude overlap
+    distinct(pie.id)
 
-# nmba_sum <- meds_cont %>%
-#     group_by(pie.id) %>%
-#     summarize(duration = sum(duration, na.rm = TRUE)) %>%
-#     filter(duration >= 24)
-
-edw_nmba_pie <- concat_encounters(unique(nmba_24h$pie.id))
+edw_nmba_pie <- concat_encounters(nmba_24h$pie.id)
 
 # run EDW query: Enteral Feeding
 
@@ -70,8 +57,21 @@ edw_include_pie <- concat_encounters(overlap_feeds$pie.id)
 
  # run EDW query: Identifiers - by PowerInsight Encounter Id
 
+# get status of fins that have already been screened
+include_sample <- read_excel("data/external/included_fins_sample.xlsx") %>%
+    dmap(as.character) %>%
+    rename(fin = include) %>%
+    mutate(include = TRUE)
+
+pts_sample <- read_excel("data/external/potential_fins_sample.xlsx") %>%
+    dmap(as.character) %>%
+    left_join(include_sample, by = "fin") %>%
+    dmap_at("include", ~ coalesce(.x, FALSE))
+
 id <- read_data("data/raw", "identifiers") %>%
     as.id() %>%
-    select(fin)
+    left_join(pts_sample, by = "fin")
 
-write_csv(id, "data/external/potential_fins.csv")
+pts_screen <- select(id, fin, include)
+
+write_csv(pts_screen, "data/external/potential_fins_all.csv")
