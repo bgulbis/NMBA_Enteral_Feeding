@@ -5,7 +5,7 @@ library(edwr)
 
 # run EDW query:
 #   * Patients - by Medication
-#       - atracurium, cisatracurium, pancruonium, rocuronium, vecuronium, vecuronium INJ
+#       - cisatracurium, rocuronium, vecuronium, vecuronium INJ
 
 patients <- read_data("data/raw", "patients") %>%
     as.patients()
@@ -13,12 +13,10 @@ patients <- read_data("data/raw", "patients") %>%
 edw_pie <- concat_encounters(patients$pie.id)
 
 # run EDW queries:
-#   * Medications - Inpatient Continuous - Prompt
-#       - atracurium, cisatracurium, pancruonium, rocuronium, vecuronium, vecuronium INJ
-#   * Medications - Inpatient Intermittent - Prompt
-#       - atracurium, cisatracurium, pancruonium, rocuronium, vecuronium, vecuronium INJ
+#   * Medications - Inpatient Continuous - All
+#   * Medications - Inpatient Intermittent - All
 
-nmba <- tibble(name = c("atracurium", "cisatracurium", "pancruonium", "rocuronium", "vecuronium", "vecuronium INJ"),
+nmba <- tibble(name = c("cisatracurium", "rocuronium", "vecuronium", "vecuronium INJ"),
                type = "med",
                group = "cont")
 
@@ -53,3 +51,10 @@ overlap_feeds <- feed %>%
 
 edw_include_pie <- concat_encounters(overlap_feeds$pie.id)
 
+ # run EDW query: Identifiers - by PowerInsight Encounter Id
+
+id <- read_data("data/raw", "identifiers") %>%
+    as.id() %>%
+    select(fin)
+
+write_csv(id, "data/external/potential_fins.csv")
