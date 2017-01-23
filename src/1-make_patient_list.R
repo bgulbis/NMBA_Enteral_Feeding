@@ -69,9 +69,33 @@ pts_sample <- read_excel("data/external/potential_fins_sample.xlsx") %>%
     dmap_at("include", ~ coalesce(.x, FALSE))
 
 id <- read_data("data/raw", "identifiers") %>%
-    as.id() %>%
-    left_join(pts_sample, by = "fin")
+    as.id()
 
-pts_screen <- select(id, fin, include)
+id_sample <- left_join(id, pts_sample, by = "fin")
+
+pts_screen <- select(id_sample, fin, include)
 
 write_csv(pts_screen, "data/external/potential_fins_all.csv")
+
+# manual screen patients for inclusion
+
+include_fins <- read_excel("data/external/included_fins_all.xlsx") %>%
+    dmap_at("fin", as.character) %>%
+    dmap_at("include", as.logical)
+
+include_pie <- id %>%
+    left_join(include_fins, by = "fin") %>%
+    filter(include) %>%
+    select(pie.id)
+
+edw_patients <- concat_encounters(include_pie$pie.id)
+
+# run EDW queries:
+#   * Demographics
+#   * ICU Assessments (CAM-ICU, GCS, RASS)
+#   * Labs (Chemistry)
+#   * Labs (Renal)
+#   * Location History
+#   * Measures (Height and Weight)
+#   * Medications - Inpatient Continuous - All
+#   * Medications - Inpatient Intermittent - All
