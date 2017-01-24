@@ -79,3 +79,4 @@ link <- read_data(dir_raw, "identifiers") %>%
 
 write_csv(meds_cont, "data/external/meds_continuous.csv")
 write_csv(link, "data/external/linking_log.csv")
+write_csv(tof, "data/external/train_of_four.csv")
