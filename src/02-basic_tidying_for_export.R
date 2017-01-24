@@ -1,6 +1,7 @@
 # basic tidying to send data
 
 library(tidyverse)
+library(stringr)
 library(lubridate)
 library(edwr)
 
@@ -24,7 +25,15 @@ labs <- read_data(dir_raw, "labs") %>%
 
 locations <- read_data(dir_raw, "locations") %>%
     as.locations() %>%
-    tidy_data()
+    tidy_data() %>%
+    filter(location %in% c(
+        "Cullen 2 E Medical Intensive Care Unit",
+        "HVI Cardiovascular Intensive Care Unit",
+        "Hermann 3 Shock Trauma Intensive Care Unit",
+        "Jones 7 J Elective Neuro ICU",
+        "Hermann 3 Transplant Surgical ICU",
+        "HVI Cardiac Care Unit",
+        "HVI Heart Failure ICU"))
 
 measures <- read_data(dir_raw, "measures") %>%
     as.measures()
@@ -33,14 +42,40 @@ meds_sched <- read_data(dir_raw, "meds-sched-all") %>%
     as.meds_sched()
 
 nmba <- c("cisatracurium", "rocuronium", "vecuronium", "vecuronium INJ")
-tpn <- c("parenteral nutrition solution", "parenteral nutrition solution w/ lytes")
+tpn <- c("parenteral nutrition solution", "parenteral nutrition solution w/lytes")
 pressor <- c("dopamine", "epinephrine", "norepinephrine", "phenylephrine", "vasopressin")
 
 ref <- tibble(name = c(nmba, tpn, pressor), type = "med", group = "cont")
 
 meds_cont <- read_data(dir_raw, "meds-cont-all") %>%
     as.meds_cont() %>%
-    tidy_data(ref, meds_sched)
+    tidy_data(ref, meds_sched) %>%
+    calc_runtime() %>%
+    summarize_data() %>%
+    filter(cum.dose > 0)
 
 tof <- read_data(dir_raw, "icu-scores") %>%
-    as.icu_assess()
+    as.icu_assess() %>%
+    filter(assessment == "train of four stimulation",
+           !is.na(assess.result)) %>%
+    select(-`Clinical Event Result Type`) %>%
+    mutate(tof = str_extract(assess.result, "[0-4]{1}")) %>%
+    dmap_at("tof", as.numeric)
+
+dc <- patients <- read_data(dir_raw, "patients") %>%
+    as.patients() %>%
+    semi_join(include_pie, by = "pie.id")
+
+vent <- read_data(dir_raw, "vent-times") %>%
+    as.vent_times() %>%
+    tidy_data(dc)
+
+link <- read_data(dir_raw, "identifiers") %>%
+    as.id() %>%
+    semi_join(include_pie, by = "pie.id") %>%
+    select(-person.id)
+
+# export data
+
+write_csv(meds_cont, "data/external/meds_continuous.csv")
+write_csv(link, "data/external/linking_log.csv")
