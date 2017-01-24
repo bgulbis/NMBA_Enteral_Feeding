@@ -90,6 +90,8 @@ include_pie <- id %>%
 
 edw_patients <- concat_encounters(include_pie$pie.id)
 
+write_rds(edw_patients, "data/tidy/include_pie.Rds", "gz")
+
 # run EDW queries:
 #   * Demographics
 #   * ICU Assessments (CAM-ICU, GCS, RASS)
