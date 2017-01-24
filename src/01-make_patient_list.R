@@ -102,3 +102,5 @@ write_rds(include_pie, "data/tidy/include_pie.Rds", "gz")
 #   * Medications - Inpatient Continuous - All
 #   * Medications - Inpatient Intermittent - All
 #   * Ventilator Data - Start and Stop
+
+# run dirr::gzip_files() to compress raw data files
