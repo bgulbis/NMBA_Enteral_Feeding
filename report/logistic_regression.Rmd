@@ -1,0 +1,34 @@
+---
+title: "Logistic Regression Model"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(readxl)
+library(broom)
+
+nm <- c("goal", "pressor_avg", "osmolality", "motility_agent")
+
+df <- read_excel("../data/external/regression_data.xls", col_names = nm, skip = 1) %>%
+    dmap_at(c("goal", "motility_agent"), ~ .x == 1)
+
+mod <- glm(goal ~ pressor_avg + osmolality + motility_agent, df, family = "binomial")
+# summary(mod)
+
+g <- glance(mod)
+t <- tidy(mod)
+```
+
+```{r, echo=FALSE}
+knitr::kable(g, caption = "Logistic Regression Model", digits = 3)
+```
+
+```{r, echo=FALSE}
+knitr::kable(t, caption = "Model Coefficients", digits = 3)
+```
+
